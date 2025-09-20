@@ -25,7 +25,7 @@ const Login = () => {
         localStorage.setItem('userEmail', email); // optional
         setMsg('Login successful!');
         setTimeout(() => {
-          window.location.href = 'swiggy/dashboard'; // redirect to your dashboard
+          window.location.href = '/dashboard'; // redirect to your dashboard
         }, 1000);
       } else {
         setMsg(data.msg || 'Invalid credentials!');

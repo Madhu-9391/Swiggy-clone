@@ -1,61 +1,92 @@
-import React, { useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import Header from './Header';
+import React, { useState } from "react";
+import { useLocation } from "react-router-dom";
+import Header from "./Header";
+import { useOrder } from "./OrderContext"; // ✅ add this
+import { useNavigate} from "react-router-dom";
 
 const MENU_ITEMS = [
-  { id: 1, name: 'Paneer Butter Masala', price: 220 },
-  { id: 2, name: 'Butter Naan', price: 40 },
-  { id: 3, name: 'Veg Biryani', price: 180 },
-  { id: 4, name: 'Gulab Jamun', price: 70 },
+  { id: 1, name: "Paneer Butter Masala", price: 220 },
+  { id: 2, name: "Butter Naan", price: 40 },
+  { id: 3, name: "Veg Biryani", price: 180 },
+  { id: 4, name: "Gulab Jamun", price: 70 },
+  { id: 5, name: "Chicken Lollipop Biryani", price: 349 },
+  { id: 6, name: "Chicken Dum Biryani", price: 249 },
+  { id: 7, name: "Chicken Fry Biryani", price: 249 },
 ];
 
 const DELIVERY_FEE = 40;
-
 const Cart = () => {
-  const [cart, setCart] = useState({});
+  const navigate = useNavigate();
+  const { cart, addToCart, removeFromCart, placeOrderHandler } = useOrder();
+
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [orderNumber, setOrderNumber] = useState(null);
+  const [payment, setPayment] = useState("cod"); // default COD
+  const [address,setAddress]=useState("");
 
   const location = useLocation();
-  const { restaurantName = "Your Selected Restaurant", restaurantImage = "" } = location.state || {};
+  const { restaurantName = "Your Selected Restaurant", restaurantImage = "" } =
+    location.state || {};
 
-  const addToCart = (id) => {
-    setCart((prevCart) => {
-      const item = MENU_ITEMS.find((i) => i.id === id);
-      const existing = prevCart[id] || { ...item, qty: 0 };
-      return {
-        ...prevCart,
-        [id]: { ...existing, qty: existing.qty + 1 },
-      };
+  const placeOrder = async () => {
+  // generate a unique order ID
+  const orderId = "ORD" + Date.now();
+
+  // prepare order data
+  const orderData = {
+    orderId,
+    email: localStorage.getItem("userEmail") || "guest@test.com", // use user email
+    restaurantName,
+    items: Object.values(cart).map((item) => ({
+      name: item.name,
+      qty: item.qty,
+      price: item.price,
+    })),
+    subtotal,
+    deliveryFee: DELIVERY_FEE,
+    total,
+    paymentMode: payment,
+    createdAt: new Date(),
+    address:address,
+  };
+
+  try {
+    // send data to backend
+    const res = await fetch("http://localhost:5000/swiggy/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(orderData),
     });
-  };
 
-  const removeFromCart = (id) => {
-    setCart((prevCart) => {
-      const updated = { ...prevCart };
-      if (updated[id]) {
-        updated[id].qty -= 1;
-        if (updated[id].qty <= 0) delete updated[id];
-      }
-      return updated;
-    });
-  };
+    const data = await res.json();
 
-  const placeOrder = () => {
-    setOrderNumber(Math.floor(100000 + Math.random() * 900000));
-    setCart({});
-  };
+    if (data.success) {
+      setOrderNumber(orderId); // show order confirmation
+      // clear cart if needed
+      Object.keys(cart).forEach((id) => removeFromCart(id));
+      console.log("✅ Order saved to MongoDB:", data);
+    } else {
+      console.error("❌ Failed to save order:", data.message);
+    }
+  } catch (err) {
+    console.error("❌ Error placing order:", err);
+  }
+};
+
 
   const subtotal = Object.values(cart).reduce(
-    (sum, item) => sum + item.qty * item.price,
+    (sum, item) => sum + Number(item.qty) * Number(item.price),
     0
   );
-  const totalItems = Object.values(cart).reduce((sum, item) => sum + item.qty, 0);
+  const totalItems = Object.values(cart).reduce(
+    (sum, item) => sum + Number(item.qty),
+    0
+  );
   const total = subtotal + DELIVERY_FEE;
 
   return (
     <div>
-      <Header/>
+      <Header />
       <style>{`
         body {
           margin: 0;
@@ -208,9 +239,12 @@ const Cart = () => {
       {restaurantName && (
         <div className="restaurant-info">
           <h2>{restaurantName}</h2>
-          {restaurantImage && <img src={restaurantImage} alt={restaurantName} />}
+          {restaurantImage && (
+            <img src={restaurantImage} alt={restaurantName} />
+          )}
         </div>
       )}
+      
 
       {/* Cart header */}
       <div className="header">
@@ -228,33 +262,62 @@ const Cart = () => {
               <h3>{item.name}</h3>
               <p>₹{item.price}</p>
             </div>
-            <button onClick={() => addToCart(item.id)}>Add</button>
+            <button onClick={() => addToCart(item.id, item.name, item.price)}>
+              Add
+            </button>
           </div>
         ))}
       </div>
 
       {/* Cart panel */}
-      <div className={`cart-panel ${isCartOpen ? 'open' : ''}`}>
+      <div className={`cart-panel ${isCartOpen ? "open" : ""}`}>
         <div className="cart-header">
           <h2>Your Cart</h2>
-          <button onClick={() => setIsCartOpen(false)}>✖</button>
+          <button
+            onClick={() => {
+              setIsCartOpen(false); // close the cart panel
+              if (orderNumber) {
+                Object.keys(cart).forEach((id) => removeFromCart(id)); // empty the cart
+                setOrderNumber(null); // reset order confirmation for next order
+              }
+            }}
+          >
+            ✖
+          </button>
         </div>
 
         <div className="cart-content">
           {orderNumber ? (
             <div className="order-confirmation">
               <h2>✅ Order Placed!</h2>
-              <p>Your tracking number is: <strong>#{orderNumber}</strong></p>
+              <p>
+                Your tracking number is: <strong>#{orderNumber}</strong>
+              </p>
             </div>
           ) : (
             <>
               <div className="cart-items">
+                {Object.keys(cart).length > 0 && (
+        <div className="restaurant-info">
+          <h3>{restaurantName}</h3>
+          {restaurantImage && (
+            <img
+              src={restaurantImage}
+              width="80px"
+              height="100px"
+              alt={restaurantName}
+            />
+          )}
+        </div>
+      )}
                 {Object.values(cart).map((item) => (
                   <div key={item.id} className="cart-item">
                     <div>
-                      <strong>{item.name}</strong><br />
-                      ₹{item.price} × {item.qty} = ₹{item.price * item.qty}
+                      <strong>{item.name}</strong>
+                      <br />₹{Number(item.price)} × {Number(item.qty)} = ₹
+                      {Number(item.price) * Number(item.qty)}
                     </div>
+
                     <div>
                       <button onClick={() => removeFromCart(item.id)}>-</button>
                       <button onClick={() => addToCart(item.id)}>+</button>
@@ -268,10 +331,45 @@ const Cart = () => {
                   <p>Subtotal: ₹{subtotal}</p>
                   <p>Delivery Fee: ₹{DELIVERY_FEE}</p>
                   <hr />
-                  <p><strong>Total: ₹{total}</strong></p>
-                  <input type="radio" name="payment" value="cod" defaultChecked />
-                  <label>Cash On Delivery</label>
+                  <p>
+                    <strong>Total: ₹{total}</strong>
+                  </p>
+                  <input
+                    type="radio"
+                    name="payment"
+                    value="cod"
+                    id="cod"
+                    checked={payment === "cod"}
+                    onChange={(e) => setPayment(e.target.value)}
+                  />
+                  <label htmlFor="cod">Cash On Delivery</label>
+                  <br />
 
+                  <input
+                    type="radio"
+                    name="payment"
+                    value="upi"
+                    id="upi"
+                    checked={payment === "upi"}
+                    onChange={(e) => setPayment(e.target.value)}
+                  />
+                  <label htmlFor="upi">UPI</label>
+
+                  <p>Selected: {payment}</p>
+
+                  <label>Location:</label>
+                  <br />
+                  <input id="location"
+                    type="text"
+                    name="location"
+                    value={address}
+                    placeholder="village,mandal,district,pincode"
+                    style={{ width: "300px", height: "60px" }}
+                    onChange={(e)=>{setAddress(e.target.value);}}
+                    required
+                  />
+
+                  {/* <button onClick={()=>{navigate(`${location.pathname}/checkout`);}}>Place Order</button> */}
                   <button onClick={placeOrder}>Place Order</button>
                 </div>
               )}
