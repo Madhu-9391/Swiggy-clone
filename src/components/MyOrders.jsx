@@ -1,31 +1,50 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
+
+const API_BASE = "http://localhost:5000"; // change if needed
 
 const MyOrders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchOrders = async () => {
+      const token = localStorage.getItem("token"); // get JWT from login
+
+      if (!token) {
+        // redirect to login if not logged in
+        navigate("/swiggy/login");
+        return;
+      }
+
       try {
-        const res = await axios.get("http://localhost:5000/swiggy/orders");
+        const res = await axios.get(`${API_BASE}/swiggy/myorders`, {
+          headers: { Authorization: `Bearer ${token}` }, // no trailing space
+          
+        });
+
         if (res.data.success) {
           setOrders(res.data.orders);
+        } else {
+          setError("Failed to fetch orders");
         }
       } catch (err) {
-        console.error("Error fetching orders:", err);
+        console.error(err);
+        setError("Server error. Please try again.");
       } finally {
         setLoading(false);
       }
     };
 
     fetchOrders();
-  }, []);
+  }, [navigate]);
 
-  if (loading)
-    return <p className="loading">Loading orders...</p>;
-  if (orders.length === 0)
-    return <p className="loading">No orders found</p>;
+  if (loading) return <p className="loading">Loading orders...</p>;
+  if (error) return <p className="loading">{error}</p>;
+  if (orders.length === 0) return <p className="loading">No orders found</p>;
 
   return (
     <div className="orders-container">

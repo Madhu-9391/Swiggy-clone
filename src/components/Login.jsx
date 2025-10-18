@@ -13,19 +13,23 @@ const Login = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:3000/swiggy/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-
+      const response = await fetch("http://localhost:5000/swiggy/login", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({email, password })
+});
       const data = await response.json();
 
       if (response.ok) {
-        localStorage.setItem('userEmail', email); // optional
+        localStorage.clear();
+         // ✅ Store token and user name in localStorage
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('userEmail',data.email)
+        localStorage.setItem('userName', data.name); // optional
+        
         setMsg('Login successful!');
         setTimeout(() => {
-          window.location.href = '/dashboard'; // redirect to your dashboard
+          window.location.href = '/profile'; // redirect to your dashboard
         }, 1000);
       } else {
         setMsg(data.msg || 'Invalid credentials!');
@@ -40,12 +44,12 @@ const Login = () => {
       <h1>Login</h1>
       <div className="loginimg">
         <p>or <a href="/swiggy/register">create an account</a></p>
-        <img src="images/Image-login_btpq7r.avif" alt="Login" />
+        <img src="/images/Login_food.jpeg" alt="Login" />
       </div>
       <div className="Login">
         <input
           type="email"
-          placeholder="e-mail"
+          placeholder="email"
           className="mn"
           value={email}
           onChange={(e) => setEmail(e.target.value)}

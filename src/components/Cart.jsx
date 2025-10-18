@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useLocation } from "react-router-dom";
 import Header from "./Header";
 import { useOrder } from "./OrderContext"; // ✅ add this
-import { useNavigate} from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 const MENU_ITEMS = [
   { id: 1, name: "Paneer Butter Masala", price: 220 },
@@ -17,62 +17,67 @@ const MENU_ITEMS = [
 const DELIVERY_FEE = 40;
 const Cart = () => {
   const navigate = useNavigate();
-  const { cart, addToCart, removeFromCart, placeOrderHandler } = useOrder();
+  const {
+    cart,
+    addToCart,
+    removeFromCart,
+    placeOrderHandler,
+    setIsCartOpen,
+    isCartOpen,
+  } = useOrder();
 
-  const [isCartOpen, setIsCartOpen] = useState(false);
   const [orderNumber, setOrderNumber] = useState(null);
   const [payment, setPayment] = useState("cod"); // default COD
-  const [address,setAddress]=useState("");
+  const [address, setAddress] = useState("");
 
   const location = useLocation();
   const { restaurantName = "Your Selected Restaurant", restaurantImage = "" } =
     location.state || {};
 
   const placeOrder = async () => {
-  // generate a unique order ID
-  const orderId = "ORD" + Date.now();
+    // generate a unique order ID
+    const orderId = "ORD" + Date.now();
 
-  // prepare order data
-  const orderData = {
-    orderId,
-    email: localStorage.getItem("userEmail") || "guest@test.com", // use user email
-    restaurantName,
-    items: Object.values(cart).map((item) => ({
-      name: item.name,
-      qty: item.qty,
-      price: item.price,
-    })),
-    subtotal,
-    deliveryFee: DELIVERY_FEE,
-    total,
-    paymentMode: payment,
-    createdAt: new Date(),
-    address:address,
-  };
+    // prepare order data
+    const orderData = {
+      orderId,
+      email: localStorage.getItem("userEmail") || "guest@test.com", // use user email
+      restaurantName,
+      items: Object.values(cart).map((item) => ({
+        name: item.name,
+        qty: item.qty,
+        price: item.price,
+      })),
+      subtotal,
+      deliveryFee: DELIVERY_FEE,
+      total,
+      paymentMode: payment,
+      createdAt: new Date(),
+      address: address,
+    };
 
-  try {
-    // send data to backend
-    const res = await fetch("http://localhost:5000/swiggy/orders", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(orderData),
-    });
+    try {
+      // send data to backend
+      const res = await fetch("http://localhost:5000/swiggy/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(orderData),
+      });
 
-    const data = await res.json();
+      const data = await res.json();
 
-    if (data.success) {
-      setOrderNumber(orderId); // show order confirmation
-      // clear cart if needed
-      Object.keys(cart).forEach((id) => removeFromCart(id));
-      console.log("✅ Order saved to MongoDB:", data);
-    } else {
-      console.error("❌ Failed to save order:", data.message);
+      if (data.success) {
+        setOrderNumber(orderId); // show order confirmation
+        // clear cart if needed
+        Object.keys(cart).forEach((id) => removeFromCart(id));
+        console.log("✅ Order saved to MongoDB:", data);
+      } else {
+        console.error("❌ Failed to save order:", data.message);
+      }
+    } catch (err) {
+      console.error("❌ Error placing order:", err);
     }
-  } catch (err) {
-    console.error("❌ Error placing order:", err);
-  }
-};
-
+  };
 
   const subtotal = Object.values(cart).reduce(
     (sum, item) => sum + Number(item.qty) * Number(item.price),
@@ -151,7 +156,10 @@ const Cart = () => {
           border-radius: 8px;
           box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
-
+        .menu-item h3{
+        width:300px;
+        text-align:start;
+        }
         .menu-item button {
           background: #28a745;
           color: white;
@@ -244,24 +252,18 @@ const Cart = () => {
           )}
         </div>
       )}
-      
 
       {/* Cart header */}
-      <div className="header">
-        <h1>Swiggy Cart</h1>
-        <div className="cart-icon" onClick={() => setIsCartOpen(true)}>
-          🛒<span>{totalItems}</span>
-        </div>
-      </div>
+      
 
       {/* Menu items */}
       <div className="menu">
         {MENU_ITEMS.map((item) => (
-          <div key={item.id} className="menu-item">
-            <div>
+          <div key={item.id} className="menu-item" >
+           
               <h3>{item.name}</h3>
               <p>₹{item.price}</p>
-            </div>
+       
             <button onClick={() => addToCart(item.id, item.name, item.price)}>
               Add
             </button>
@@ -298,18 +300,18 @@ const Cart = () => {
             <>
               <div className="cart-items">
                 {Object.keys(cart).length > 0 && (
-        <div className="restaurant-info">
-          <h3>{restaurantName}</h3>
-          {restaurantImage && (
-            <img
-              src={restaurantImage}
-              width="80px"
-              height="100px"
-              alt={restaurantName}
-            />
-          )}
-        </div>
-      )}
+                  <div className="restaurant-info">
+                    <h3>{restaurantName}</h3>
+                    {restaurantImage && (
+                      <img
+                        src={restaurantImage}
+                        width="80px"
+                        height="100px"
+                        alt={restaurantName}
+                      />
+                    )}
+                  </div>
+                )}
                 {Object.values(cart).map((item) => (
                   <div key={item.id} className="cart-item">
                     <div>
@@ -359,13 +361,16 @@ const Cart = () => {
 
                   <label>Location:</label>
                   <br />
-                  <input id="location"
+                  <input
+                    id="location"
                     type="text"
                     name="location"
                     value={address}
                     placeholder="village,mandal,district,pincode"
                     style={{ width: "300px", height: "60px" }}
-                    onChange={(e)=>{setAddress(e.target.value);}}
+                    onChange={(e) => {
+                      setAddress(e.target.value);
+                    }}
                     required
                   />
 

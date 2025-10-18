@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { OrderProvider } from "./components/OrderContext";
 import './App.css';
+import AdminDashBoard from "./components/AdminDashBoard";
 import Cart from './components/Cart'; 
 import Header from './components/Header';
 import Parts from './components/Parts';
@@ -8,6 +9,8 @@ import Footer from './components/Footer';
 import Login from './components/Login';
 import Register from './components/Register';
 import MyOrders from './components/MyOrders';
+import UsersManagement from './components/admin/UsersManagement';
+import AdminOrders from './components/admin/AdminOrders';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 
 const MENU_ITEMS = [
@@ -19,7 +22,7 @@ const MENU_ITEMS = [
 
 function AppLayout() {
   const location = useLocation();
-  const hideLayoutRoutes = ['/swiggy/login', '/swiggy/register','/swiggy/cart','/swiggy/myorders'];
+  const hideLayoutRoutes = ['/swiggy/login', '/swiggy/register','/swiggy/cart','/swiggy/admin','/swiggy/admin/users','/swiggy/admin/orders','/swiggy/myorders','/swiggy/admin'];
   const isMinimalLayout = hideLayoutRoutes.includes(location.pathname);
 
   // ✅ Lifted cart state to App
@@ -108,6 +111,14 @@ console.log("Order items:", orderItems);
     <div className="App1">
       {!isMinimalLayout && <Header totalItems={totalItems} />}
       <Routes>
+        <Route
+          path="swiggy/admin"
+          element={<AdminDashBoard/>}>
+          <Route path="users" element={<UsersManagement />} />
+          <Route path="orders" element={<AdminOrders />} />
+          
+        </Route>
+
         <Route path="/swiggy/login" element={<Login />} />
         <Route path="/swiggy/register" element={<Register />} />
         <Route path="/swiggy/cart" element={<Cart />} />
